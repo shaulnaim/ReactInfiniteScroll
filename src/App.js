@@ -17,8 +17,8 @@ const applySetResult = result => prevState => ({
 
 const getHackerNewsUrl = (value, page) =>
   `https://hn.algolia.com/api/v1/search?query=${value}&page=${page}&hitsPerPage=100`;
- 
-const withLoading = (Component) => (props) =>
+
+const withLoading = Component => props => (
   <div>
     <Component {...props} />
 
@@ -26,23 +26,22 @@ const withLoading = (Component) => (props) =>
       {props.isLoading && <span>Loading...</span>}
     </div>
   </div>
+);
 
-const withPaginated = (Component) => (props) =>
+const withPaginated = Component => props => (
   <div>
     <Component {...props} />
 
     <div className="interactions">
-      {
-        (props.page !== null && !props.isLoading) &&
-        <button
-          type="button"
-          onClick={props.onPaginatedSearch}
-        >
-          More
-        </button>
-      }
+      {props.page !== null &&
+        !props.isLoading && (
+          <button type="button" onClick={props.onPaginatedSearch}>
+            More
+          </button>
+        )}
     </div>
   </div>
+);
 class App extends React.Component {
   constructor(props) {
     super(props);
@@ -64,7 +63,7 @@ class App extends React.Component {
 
   onPaginatedSearch = e => {
     this.fetchStories(this.input.value, this.state.page + 1);
-  }
+  };
 
   fetchStories = (value, page) => {
     this.setState({ isLoading: true });
@@ -73,11 +72,11 @@ class App extends React.Component {
       .then(result => this.onSetResult(result, page));
   };
 
-  onSetResult = (result, page) =>{
+  onSetResult = (result, page) => {
     page === 0
       ? this.setState(applySetResult(result))
       : this.setState(applyUpdateResult(result));
-  }
+  };
 
   render() {
     return (
@@ -89,7 +88,7 @@ class App extends React.Component {
           </form>
         </div>
 
-         <ListWithLoadingWithPaginated
+        <ListWithLoadingWithPaginated
           list={this.state.hits}
           isLoading={this.state.isLoading}
           page={this.state.page}
@@ -100,20 +99,39 @@ class App extends React.Component {
   }
 }
 
-const List = ({ list, page, onPaginatedSearch, isLoading }) => (
-  <div className="list">
-    {list.map(item => (
-      <div className="list-row" key={item.objectID}>
-        <a href={item.url}>{item.title}</a>
-      </div>
-    ))}
-  </div>
-);
+class List extends React.Component {
+  componentDidMount() {
+    window.addEventListener('scroll', this.onScroll, false);
+  }
 
-const ListWithLoadingWithPaginated = compose(
-  withPaginated,
-  withLoading,
-)(List);
+  componentWillUnmount() {
+    window.removeEventListener('scroll', this.onScroll, false);
+  }
+
+  onScroll = () => {
+    if (
+      window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 &&
+      this.props.list.length
+    ) {
+      this.props.onPaginatedSearch();
+    }
+  };
+  
+  render() {
+    const { list } = this.props;
+    return (
+      <div className="list">
+        {list.map(item => (
+          <div className="list-row" key={item.objectID}>
+            <a href={item.url}>{item.title}</a>
+          </div>
+        ))}
+      </div>
+    );
+  }
+}
+
+const ListWithLoadingWithPaginated = compose(withPaginated, withLoading)(List);
 
 // const DifferentList = ({ list }) =>
 //   <div className="list">
