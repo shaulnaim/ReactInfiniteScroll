@@ -6,12 +6,19 @@ import './App.css';
 const applyUpdateResult = result => prevState => ({
   hits: [...prevState.hits, ...result.hits],
   page: result.page,
+  isError: false,
   isLoading: false
 });
 
 const applySetResult = result => prevState => ({
   hits: result.hits,
   page: result.page,
+  isError: false,
+  isLoading: false
+});
+
+const applySetError = prevState => ({
+  isError: true,
   isLoading: false
 });
 
@@ -43,7 +50,8 @@ const withInfiniteScroll = Component =>
         window.innerHeight + window.scrollY >=
           document.body.offsetHeight - 500 &&
         this.props.list.length &&
-        !this.props.isLoading
+        !this.props.isLoading &&
+        !this.props.isError
       ) {
         this.props.onPaginatedSearch();
       }
@@ -54,12 +62,35 @@ const withInfiniteScroll = Component =>
     }
   };
 
+  const withPaginated = (Component) => (props) =>
+  <div>
+    <Component {...props} />
+
+    <div className="interactions">
+      {
+        (props.page !== null && !props.isLoading && props.isError) &&
+        <div>
+          <div>
+            Something went wrong...
+          </div>
+          <button
+            type="button"
+            onClick={props.onPaginatedSearch}
+          >
+            Try Again
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+
 class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       hits: [],
       page: null,
+      isError: false,
       isLoading: false
     };
   }
@@ -81,13 +112,18 @@ class App extends React.Component {
     this.setState({ isLoading: true });
     fetch(getHackerNewsUrl(value, page))
       .then(response => response.json())
-      .then(result => this.onSetResult(result, page));
+      .then(result => this.onSetResult(result, page))
+      .catch(this.onSetError);
   };
 
   onSetResult = (result, page) => {
     page === 0
       ? this.setState(applySetResult(result))
       : this.setState(applyUpdateResult(result));
+  };
+
+  onSetError = () => {
+    this.setState(applySetError);
   };
 
   render() {
@@ -100,8 +136,10 @@ class App extends React.Component {
           </form>
         </div>
 
-        <ListWithLoadingWithInfinite
+        <AdvancedList
           list={this.state.hits}
+          isError={this.state.isError}
+          isLoading={this.state.isLoading}
           page={this.state.page}
           onPaginatedSearch={this.onPaginatedSearch}
         />
@@ -123,7 +161,7 @@ const List = ({ list }) => (
   </div>
 );
 
-const ListWithLoadingWithInfinite = compose(withInfiniteScroll, withLoading)(
+const AdvancedList = compose(withPaginated, withInfiniteScroll, withLoading)(
   List
 );
 
